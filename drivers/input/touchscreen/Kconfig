@@ -11,6 +11,13 @@ menuconfig INPUT_TOUCHSCREEN
 
 if INPUT_TOUCHSCREEN
 
+config TOUCHSCREEN_1WIRE
+        tristate "Tiny4412 1wire touchscreen"
+        help
+          Say Y here to support touchscreen for tiny4412.
+
+          If unsure, say N.
+
 config TOUCHSCREEN_PROPERTIES
 	def_tristate INPUT
 	depends on INPUT

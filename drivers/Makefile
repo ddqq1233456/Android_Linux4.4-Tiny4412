@@ -173,3 +173,7 @@ obj-$(CONFIG_STM)		+= hwtracing/stm/
 obj-$(CONFIG_ANDROID)		+= android/
 obj-$(CONFIG_NVMEM)		+= nvmem/
 obj-$(CONFIG_FPGA)		+= fpga/
+
+# tiny4412
+obj-$(CONFIG_TINY4412_BSP)  += tiny4412/
+

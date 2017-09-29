@@ -105,8 +105,6 @@ static int lcd_probe(struct platform_device *pdev)
     int ret;
     unsigned int temp;
 
-	printk("%s\n", __func__);
-
 	/* 1. 分配一个fb_info */
     s3c_lcd = framebuffer_alloc(0, NULL);
    
@@ -310,7 +308,6 @@ static int lcd_probe(struct platform_device *pdev)
 
     /* 4. 注册 */
     ret = register_framebuffer(s3c_lcd);
-	printk("[LCD] init ... %d\n", ret);
 	
     return ret;
 }
@@ -344,7 +341,6 @@ static struct platform_driver lcd_driver =
 static int lcd_init(void)
 {
     int ret;
-	printk("%s\n", __func__);
     ret = platform_driver_register(&lcd_driver);
 
     if (ret)

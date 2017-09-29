@@ -14,6 +14,10 @@
 /dts-v1/;
 #include "exynos4412.dtsi"
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/pinctrl/samsung.h>
 
 / {
 	model = "FriendlyARM TINY4412 board based on Exynos4412";
@@ -23,7 +27,8 @@
 		stdout-path = &serial_0;
 	};
 
-	memory {
+	memory@40000000 {
+		device_type = "memory";
 		reg = <0x40000000 0x40000000>;
 	};
 
@@ -41,19 +46,21 @@
 			label = "led2";
 			gpios = <&gpm4 1 GPIO_ACTIVE_LOW>;
 			default-state = "off";
+			linux,default-trigger = "mmc0";
 		};
 
 		led3 {
 			label = "led3";
 			gpios = <&gpm4 2 GPIO_ACTIVE_LOW>;
 			default-state = "off";
+			linux,default-trigger = "mmc1";
 		};
 
 		led4 {
 			label = "led4";
 			gpios = <&gpm4 3 GPIO_ACTIVE_LOW>;
 			default-state = "off";
-			linux,default-trigger = "mmc0";
+			linux,default-trigger = "none";
 		};
 	};
 
@@ -68,7 +75,113 @@
 			clock-frequency = <24000000>;
 		};
 	};
+
+	usb-hub { 
+		compatible = "smsc,usb4604";
+		reset-gpios = <&gpm2 4 GPIO_ACTIVE_LOW>;
+		initial-mode = <1>; 
+		status = "okay";
+	};
+		
+	HelloWorld {
+		compatible = "tiny4412, hello_world";
+		status = "okay";
+		
+		device1 {
+			example = "hello_world";
+		};
+	};
+
+	buzzer {
+		compatible = "pwm-beeper";
+		pwms = <&pwm 0 1000000000 0>;
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+		pinctrl-names = "default";
+
+		key1 {
+			interrupt-parent = <&gpx3>;
+			interrupts = <2 IRQ_TYPE_EDGE_FALLING>;
+			gpios = <&gpx3 2 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_1>;
+			label = "key1";
+			debounce-interval = <10>;
+			wakeup-source;
+		};
+		key2 {
+			interrupt-parent = <&gpx3>;
+			interrupts = <3 IRQ_TYPE_EDGE_FALLING>;
+			gpios = <&gpx3 3 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_2>;
+			label = "key2";
+			debounce-interval = <10>;
+			wakeup-source;
+		};
+		key3 {
+			interrupt-parent = <&gpx3>;
+			interrupts = <4 IRQ_TYPE_EDGE_FALLING>;
+			gpios = <&gpx3 4 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_3>;
+			label = "key3";
+			debounce-interval = <10>;
+			wakeup-source;
+		};
+		key4 {
+			interrupt-parent = <&gpx3>;
+			interrupts = <5 IRQ_TYPE_EDGE_FALLING>;
+			gpios = <&gpx3 5 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_4>;
+			label = "key4";
+			debounce-interval = <10>;
+			wakeup-source;
+		};	
+	};
+
+	backlight {
+		compatible = "tiny4412, onewire_backlight";
+		reg = <0x139D0000 0x1000>;
+		pinctrl-names = "backlight_in", "backlight_out";
+		pinctrl-0 = <&backlight_in>;
+		pinctrl-1 = <&backlight_out>;
+		gpios = <&gpx1 2 GPIO_ACTIVE_HIGH>;
+		clock-names = "timers";
+		clocks = <&clock CLK_PWM>;
+		interrupts = <GIC_SPI 40 IRQ_TYPE_LEVEL_HIGH>;
+		pwms = <&pwm 0 1000000000 0>;
+	};
+
+	lcd_s702@11C00000 {
+		compatible = "tiny4412, lcd_s702";
+		reg = <0x11C00000  0x20c0 0x10010210 0x08 0x10023c80 0x04 0x1003c000 0x1000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&lcd_s702>;
+		clocks = <&clock CLK_FIMD0 &clock CLK_ACLK160>;
+		clock-names = "fimd0","aclk160";
+	};
+
+	regulators {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		mmc_reg: regulator@0 {
+			compatible = "regulator-fixed";
+			reg = <0>;
+			regulator-name = "VMEM_VDD_2.8V";
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+			enable-active-high;
+		};
+	};
+
 };
+
+&serial_0 {
+	status = "okay";
+};
+
 
 &rtc {
 	status = "okay";
@@ -78,21 +191,158 @@
 	bus-width = <4>;
 	pinctrl-0 = <&sd2_clk &sd2_cmd &sd2_cd &sd2_bus4>;
 	pinctrl-names = "default";
+	vmmc-supply = <&mmc_reg>;
+	cd-gpios = <&gpk2 2 GPIO_ACTIVE_HIGH>;
+	cd-inverted;
 	status = "okay";
 };
 
-&serial_0 {
+&mshc_0 {
+	pinctrl-0 = <&sd4_clk &sd4_cmd &sd4_bus4 &sd4_bus8>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	num-slots = <1>;
+	broken-cd;
+	non-removable;
+	vmmc-supply = <&mmc_reg>;
+	card-detect-delay = <200>;
+	samsung,dw-mshc-ciu-div = <3>;
+	samsung,dw-mshc-sdr-timing = <2 3>;
+	samsung,dw-mshc-ddr-timing = <1 2>;
+	bus-width = <8>;
+	cap-mmc-highspeed;
+};
+
+&pwm {
+	samsung,pwm-outputs = <0>;
+	pinctrl-0 = <&pwm0_out>;
+	pinctrl-names = "default";
+	status = "okay";	
+};
+
+&exynos_usbphy {
 	status = "okay";
 };
 
-&serial_1 {
+&hsotg {
 	status = "okay";
 };
 
-&serial_2 {
+&ehci {
+	status = "okay";
+	port@0 {
+		status = "okay";
+	};
+	port@1 {
+		status = "okay";
+	};
+	port@2 {
+		status = "okay";
+	};
+};
+
+&ohci {
+	status = "okay";
+	port@0 {
+		status = "okay";
+	};
+};
+
+
+&i2c_0 {
+	samsung,i2c-sda-delay = <100>;
+	samsung,i2c-max-bus-freq = <400000>;
+	status = "okay";
+	
+	eeprom: eeprom@50 {
+		compatible = "atmel,24c16", "microchip, 24aa025e48";
+		reg = <0x50>;
+		pagesize = <16>;
+	};
+
+	codec: wm8960@1a {
+		compatible = "wlf,wm8960";
+		reg = <0x1a>;
+		clocks = <&pmu_system_controller 0>;
+		clock-names = "MCLK1";
+		wlf,shared-lrclk;
+		#sound-dai-cells = <0>;
+	};
+};
+
+&i2c_1 {
+	samsung,i2c-sda-delay = <100>;
+	samsung,i2c-max-bus-freq = <400000>;
+	status = "okay";
+
+	ft5406: touchscreen@38 {
+		compatible = "edt,edt-ft5406";
+		reg = <0x38>;
+		interrupt-parent = <&gpx1>;
+		interrupts = <6 IRQ_TYPE_EDGE_FALLING>;
+		touchscreen-size-x = <800>;
+		touchscreen-size-y = <480>;
+		touchscreen-fuzz-x = <4>;
+		touchscreen-fuzz-y = <7>;
+		touchscreen-fuzz-pressure = <2>;
+		touchscreen-max-pressure = <2048>;
+	};
+};
+
+&adc {
 	status = "okay";
 };
 
-&serial_3 {
+&i2s0 {
+	pinctrl-0 = <&i2s0_bus>; 
+	pinctrl-names = "default";
 	status = "okay";
 };
+
+&pinctrl_0 {
+	lcd_s702:lcd {
+    	samsung,pins = "gpf0-0", "gpf0-1", "gpf0-2", "gpf0-3", "gpf0-4",
+						"gpf0-5", "gpf0-6","gpf0-7", "gpf1-0", "gpf1-1",
+						"gpf1-2", "gpf1-3", "gpf1-4", "gpf1-5", "gpf1-6",
+						"gpf1-7", "gpf2-0", "gpf2-1", "gpf2-2", "gpf2-3", 
+						"gpf2-4", "gpf2-5", "gpf2-6","gpf2-7", "gpf3-0",
+						"gpf3-1", "gpf3-2", "gpf3-3";
+         samsung,pin-function = <2>;
+         samsung,pin-pud = <0>;
+         samsung,pin-drv = <0>;
+    };
+};
+
+&pinctrl_1 {
+	backlight_out: backlight_out {
+		samsung,pins = "gpx1-2";
+		samsung,pin-function = <EXYNOS_PIN_FUNC_OUTPUT>;
+		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
+		samsung,pin-drv = <EXYNOS4_PIN_DRV_LV1>;
+	};
+
+	backlight_in: backlight_in {
+		samsung,pins = "gpx1-2";
+		samsung,pin-function = <EXYNOS_PIN_FUNC_INPUT>;
+		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
+		samsung,pin-drv = <EXYNOS4_PIN_DRV_LV1>;
+	};
+
+	hdmi_hpd: hdmi-hpd {
+		samsung,pins = "gpx3-7";
+		samsung,pin-pud = <EXYNOS_PIN_PULL_DOWN>;
+	};
+};
+
+
+/*
+&hdmi {
+	hpd-gpios = <&gpx3 7 GPIO_ACTIVE_HIGH>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&hdmi_hpd>;
+	ddc = <&i2c_1>;
+	status = "okay";
+};
+*/
+
