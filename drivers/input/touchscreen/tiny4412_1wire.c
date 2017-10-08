@@ -586,6 +586,7 @@ static int ts_1wire_probe(struct platform_device *pdev)
     device_create(priv->one_wire_class, NULL, MKDEV(priv->major, 0), NULL, "backlight");
 
 	platform_set_drvdata(pdev, priv);		
+	this->brightness = 0xFF;
 
 	return 0;
 }
